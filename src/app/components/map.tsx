@@ -14,7 +14,12 @@ const icon = L.icon({
   shadowSize: [41, 41]
 });
 
-function ChangeView({ center, zoom }) {
+interface ChangeViewProps {
+  center: [number, number];
+  zoom: number;
+}
+
+function ChangeView({ center, zoom }: ChangeViewProps) {
   const map = useMap();
   useEffect(() => {
     map.setView(center, zoom);
@@ -22,8 +27,14 @@ function ChangeView({ center, zoom }) {
   return null;
 }
 
-function Map({ lat, lon, cityName }) {
-  const position = [lat, lon];
+interface MapProps {
+  lat: number;
+  lon: number;
+  cityName: string;
+}
+
+function Map({ lat, lon, cityName }: MapProps) {
+  const position: [number, number] = [lat, lon];
 
   return (
     <div className="h-64 rounded-lg overflow-hidden">
