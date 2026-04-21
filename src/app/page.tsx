@@ -68,7 +68,7 @@ export default function Home() {
         <div className="w-full max-w-md space-y-6">
           
           <div className="text-center">
-            <h2 className="text-2xl font-light text-gray-900">Current Weather</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">Current Weather</h2>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
