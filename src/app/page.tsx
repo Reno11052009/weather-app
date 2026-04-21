@@ -5,14 +5,13 @@ import React from "react";
 import Footer from "./components/Footer";
 import dynamic from 'next/dynamic';
 
-// const Map = dynamic(() => import('./components/map'), { ssr: false });
 const Map = dynamic(() => import('./components/map'), { ssr: false });
 
 export default function Home() {
-  const[city, setCity] = React.useState("");
-  const[data, setData] = React.useState(null);
-  const[error, setError] = React.useState("");
-  const mapRef = React.useRef(null);
+  const[city, setCity] = React.useState<string>("");
+  const[data, setData] = React.useState<any>(null);
+  const[error, setError] = React.useState<string>("");
+  const mapRef = React.useRef<HTMLDivElement>(null);
 
   const indonesianCities = [
     "Jakarta",
@@ -27,7 +26,7 @@ export default function Home() {
     "Malang"
   ];
 
-  const getWeather = async (cityName) => {
+  const getWeather = async (cityName: string) => {
     if(!cityName) return;
 
     setError("");
@@ -57,7 +56,7 @@ export default function Home() {
     }
   }
 
-  const handleCityClick = (cityName) => {
+  const handleCityClick = (cityName: string) => {
     setCity(cityName);
     getWeather(cityName);
   }
