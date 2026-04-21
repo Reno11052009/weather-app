@@ -7,10 +7,37 @@ import dynamic from 'next/dynamic';
 
 const Map = dynamic(() => import('./components/map'), { ssr: false });
 
+interface WeatherData {
+  name: string;
+  main: {
+    temp: number;
+  };
+  weather: Array<{
+    main: string;
+  }>;
+  coord: {
+    lat: number;
+    lon: number;
+  };
+  sys: {
+    country: string;
+  };
+}
+
+interface CityOption {
+  name: string;
+  country: string;
+  state?: string;
+  lat: number;
+  lon: number;
+}
+
 export default function Home() {
   const[city, setCity] = React.useState<string>("");
-  const[data, setData] = React.useState<any>(null);
+  const[data, setData] = React.useState<WeatherData | null>(null);
   const[error, setError] = React.useState<string>("");
+  const[cityOptions, setCityOptions] = React.useState<CityOption[]>([]);
+  const[loading, setLoading] = React.useState<boolean>(false);
   const mapRef = React.useRef<HTMLDivElement>(null);
 
   const indonesianCities = [
@@ -26,33 +53,101 @@ export default function Home() {
     "Malang"
   ];
 
+  const getWeatherByCoords = async (lat: number, lon: number) => {
+    const apiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
+    
+    try {
+      setLoading(true);
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}`);
+      const result = await res.json();
+      
+      if(result.cod === 200) {
+        setData(result);
+        setCityOptions([]);
+        setTimeout(() => {
+          mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      } else {
+        setError(result.message || "Failed to retrieve weather data.");
+      }
+    } catch (err) {
+      setError("An error occurred. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const getUserLocation = () => {
+    setError("");
+    setLoading(true);
+
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by this browser.");
+      setLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        getWeatherByCoords(latitude, longitude);
+      },
+      (err) => {
+        setLoading(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setError("Location access denied. Enable location permission in your browser.");
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setError("Location information is not available.");
+        } else if (err.code === err.TIMEOUT) {
+          setError("Request lokasi timeout.");
+        } else {
+          setError("Failed to retrieve location.");
+        }
+      }
+    );
+  }
+
   const getWeather = async (cityName: string) => {
     if(!cityName) return;
 
     setError("");
     setData(null);
+    setCityOptions([]);
 
     const apiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
     
     if(!apiKey) {
-      setError("API key tidak ditemukan. Periksa file .env.local");
+      setError("API key not found. Please check the .env.local file.");
       return;
     }
 
     try {
-      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${apiKey}`);
-      const result = await res.json();
+      setLoading(true);
+      const geoRes = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${cityName}&limit=5&appid=${apiKey}`);
+      const geoData = await geoRes.json();
       
-      if(result.cod === 200) {
-        setData(result);
-        setTimeout(() => {
-          mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+      if(geoData.length === 0) {
+        setError("City not found. Please check the name and try again.");
+        setLoading(false);
+        return;
+      }
+
+      if(geoData.length === 1) {
+        getWeatherByCoords(geoData[0].lat, geoData[0].lon);
       } else {
-        setError(result.message || "Kota tidak ditemukan");
+        const options = geoData.map((city: any) => ({
+          name: city.name,
+          country: city.country,
+          state: city.state,
+          lat: city.lat,
+          lon: city.lon
+        }));
+        setCityOptions(options);
+        setLoading(false);
       }
     } catch (err) {
-      setError("Terjadi kesalahan. Coba lagi nanti.");
+      setError("An error occurred. Please try again later..");
+      setLoading(false);
     }
   }
 
@@ -60,6 +155,14 @@ export default function Home() {
     setCity(cityName);
     getWeather(cityName);
   }
+
+  const handleCityOptionClick = (option: CityOption) => {
+    getWeatherByCoords(option.lat, option.lon);
+  }
+
+  React.useEffect(() => {
+    getUserLocation();
+  }, []);
 
   return (
     <>
@@ -72,6 +175,27 @@ export default function Home() {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
+            <button 
+              onClick={getUserLocation}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              disabled={loading}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {loading ? "Retrieve Location..." : "Use My Location"}
+            </button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">or search for a city</span>
+              </div>
+            </div>
+
             <input 
               placeholder="Enter city name" 
               value={city}
@@ -83,8 +207,9 @@ export default function Home() {
             <button 
               onClick={() => getWeather(city)} 
               className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 transition-colors"
+              disabled={loading}
             >
-              Get Weather
+              {loading ? "Loading..." : "Get Weather"}
             </button>
 
             {error && (
@@ -94,6 +219,26 @@ export default function Home() {
             )}
           </div>
 
+          {cityOptions.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Pilih Kota</h3>
+              <div className="space-y-2">
+                {cityOptions.map((option, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleCityOptionClick(option)}
+                    className="w-full px-4 py-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                  >
+                    <div className="font-medium text-gray-900">{option.name}</div>
+                    <div className="text-sm text-gray-600">
+                      {option.state && `${option.state}, `}{option.country}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Cities in Indonesia</h3>
             <div className="grid grid-cols-2 gap-2">
@@ -102,6 +247,7 @@ export default function Home() {
                   key={cityName}
                   onClick={() => handleCityClick(cityName)}
                   className="px-3 py-2 text-sm text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors text-left"
+                  disabled={loading}
                 >
                   {cityName}
                 </button>
