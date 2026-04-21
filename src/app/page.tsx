@@ -95,7 +95,7 @@ export default function Home() {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Kota di Indonesia</h3>
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Cities in Indonesia</h3>
             <div className="grid grid-cols-2 gap-2">
               {indonesianCities.map((cityName) => (
                 <button
