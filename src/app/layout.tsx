@@ -15,6 +15,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Weather App",
   description: "A simple weather application built with Next.js and OpenWeatherMap API.",
+  icons: [
+    {
+      url: "/weather.png",
+      rel: "icon",
+    },
+  ],
 };
 
 export default function RootLayout({
